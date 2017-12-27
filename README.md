@@ -2,11 +2,11 @@
 
 An implementation of the classic puzzle game [Sudoku](https://en.wikipedia.org/wiki/Sudoku) in Java, using Java SE 8 and JavaFX.
 
-####Implemented features
+#### Implemented features
 * Standard 9x9 game board
 * The ability to reset/clear the board
 
-####Planned features
+#### Planned features
 * Saving the current game
 * Loading a previously saved game
 * Generation of a sudoku puzzle
