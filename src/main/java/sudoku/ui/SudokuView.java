@@ -9,10 +9,14 @@ import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import sudoku.data.SudokuCell;
+import sudoku.data.SudokuModel;
+
+import java.io.*;
 
 public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
-    private SudokuCell[][] cells = new SudokuCell[9][9];
+    private SudokuModel model = new SudokuModel();
     private final Stage stage;
+    private FileChooser chooser;
     public SudokuView(Stage stage) {
         this.stage = stage;
         setAlignment(Pos.TOP_CENTER);
@@ -38,9 +42,8 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
                 parentPane.add(pane, c, r);
                 for (int ic = 0; ic < 3; ic++) {
                     for (int ir = 0; ir < 3; ir++) {
-                        SudokuCell cell = new SudokuCell(c * 3 + ic, r * 3 + ir);
+                        SudokuCell cell = model.get(c * 3 + ic, r * 3 + ir);
                         pane.add(cell, ic, ir);
-                        cells[c * 3 + ic][r * 3 + ir] = cell;
                         cell.addListener(this);
                     }
                 }
@@ -54,24 +57,27 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
 
         Menu fileMenu = new Menu("File");
         MenuItem reset = new MenuItem("Reset");
-        reset.setOnAction(e -> {
-            for (SudokuCell[] arr : cells) {
-                for (SudokuCell cell : arr) {
-                    cell.reset();
-                }
-            }
-        });
+        reset.setOnAction(e -> model.reset());
 
         MenuItem exit = new MenuItem("Exit");
         exit.setOnAction(e -> System.exit(0));
 
         MenuItem save = new MenuItem("Save");
-        save.setOnAction(e -> System.out.println("Not implemented yet"));
+        save.setOnAction(e -> {
+            FileChooser chooser = getChooser();
+            File saveFile = chooser.showSaveDialog(stage);
+            if (saveFile != null) {
+                model.save(saveFile);
+            }
+        });
 
         MenuItem load = new MenuItem("Load");
         load.setOnAction(e -> {
-            FileChooser chooser = new FileChooser();
-            chooser.showOpenDialog(stage);
+            FileChooser chooser = getChooser();
+            File loadFile = chooser.showOpenDialog(stage);
+            if (loadFile != null) {
+                model.load(loadFile);
+            }
         });
 
         fileMenu.getItems().addAll(reset, save, load, new SeparatorMenuItem(), exit);
@@ -82,6 +88,17 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
 
         bar.getMenus().addAll(fileMenu, help);
         getChildren().addAll(bar);
+    }
+
+    public synchronized FileChooser getChooser() {
+        if (chooser == null) {
+            chooser = new FileChooser();
+            chooser.getExtensionFilters().addAll(
+                    new FileChooser.ExtensionFilter("Sudoku files", "*.sdk", "*.sudoku"),
+                    new FileChooser.ExtensionFilter("All files", "*.*")
+            );
+        }
+        return chooser;
     }
 
     @Override
