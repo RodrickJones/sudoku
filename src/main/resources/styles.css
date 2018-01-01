@@ -1,3 +1,15 @@
 .combo-box .arrow, .combo-box .arrow-button{
     -fx-background-color: transparent;
 }
+
+.sudoku-cell {
+    -fx-background-radius: 10;
+}
+
+.sudoku-cell:incorrect {
+    -fx-background-color: red;
+}
+
+.sudoku-cell:hint {
+    -fx-background-color: orange;
+}

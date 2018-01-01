@@ -12,6 +12,7 @@ import sudoku.data.SudokuCell;
 import sudoku.data.SudokuModel;
 
 import java.io.*;
+import java.util.Comparator;
 
 public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
     private SudokuModel model = new SudokuModel();
@@ -84,7 +85,14 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
 
         Menu help = new Menu("Help");
         CheckMenuItem limitSelections = new CheckMenuItem("Limit Options");
-        help.getItems().addAll(limitSelections);
+        limitSelections.selectedProperty().addListener((observable, oldValue, newValue) -> model.restrictDomains(newValue));
+
+        MenuItem hint = new MenuItem("Hint");
+        hint.setOnAction(e -> {
+            SudokuCell hintCell = model.getMin(Comparator.comparingInt(cell -> cell.getDomain().size()));
+            hintCell.setHint();
+        });
+        help.getItems().addAll(limitSelections, hint);
 
         bar.getMenus().addAll(fileMenu, help);
         getChildren().addAll(bar);
@@ -94,7 +102,7 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
         if (chooser == null) {
             chooser = new FileChooser();
             chooser.getExtensionFilters().addAll(
-                    new FileChooser.ExtensionFilter("Sudoku files", "*.sdk", "*.sudoku"),
+                    new FileChooser.ExtensionFilter("Sudoku files", "*.sudoku", "*.sdk"),
                     new FileChooser.ExtensionFilter("All files", "*.*")
             );
         }
@@ -103,6 +111,6 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
 
     @Override
     public void changed(SudokuCell cell, Integer oldValue, Integer newValue) {
-        System.out.println(cell + " : " + oldValue + " : " + newValue);
+        System.out.printf("%s : Previous=%s : Current=%s\n", cell, oldValue, newValue);
     }
 }
