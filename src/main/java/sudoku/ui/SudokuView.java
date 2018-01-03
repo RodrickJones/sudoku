@@ -11,7 +11,7 @@ import javafx.stage.Stage;
 import sudoku.data.SudokuCell;
 import sudoku.data.SudokuModel;
 
-import java.io.*;
+import java.io.File;
 import java.util.Comparator;
 
 public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
@@ -88,10 +88,8 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
         limitSelections.selectedProperty().addListener((observable, oldValue, newValue) -> model.restrictDomains(newValue));
 
         MenuItem hint = new MenuItem("Hint");
-        hint.setOnAction(e -> {
-            SudokuCell hintCell = model.getMin(Comparator.comparingInt(cell -> cell.getDomain().size()));
-            hintCell.setHint();
-        });
+        hint.setOnAction(e -> model.getMin(cell -> cell.getValue() == null || cell.getDomain().size() > 2,
+                Comparator.comparingInt(cell -> cell.getDomain().size())).ifPresent(SudokuCell::setHint));
         help.getItems().addAll(limitSelections, hint);
 
         bar.getMenus().addAll(fileMenu, help);

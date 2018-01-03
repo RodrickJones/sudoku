@@ -3,11 +3,51 @@ package sudoku.data;
 import java.io.*;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public class SudokuModel {
     private final SudokuCell.ValueChangeListener DOMAIN_RESTRICTOR = (cell, oldValue, newValue) -> {
-        //get all affected cells, calculate if oldvalue can be readded to their domains, remove newvalue from their domains
+        Collection<SudokuCell> row = new ArrayList<>(9);
+        Collection<SudokuCell> column = new ArrayList<>(9);
+        Collection<SudokuCell> sector = new ArrayList<>(9);
+        for (int i = 0; i < 9; i++) {
+            SudokuCell rowCell = get(i, cell.getRow());
+            SudokuCell columnCell = get(cell.getColumn(), i);
+            row.add(rowCell);
+            column.add(columnCell);
+            if (newValue != null) {
+                if (rowCell != cell) {
+                    rowCell.getDomain().remove(newValue);
+                }
+                if (columnCell != cell) {
+                    columnCell.getDomain().remove(newValue);
+                }
+            }
+        }
+        int sectorC = cell.getColumn() / 3 * 3;
+        int sectorR = cell.getRow() / 3 * 3;
+        for (int c = sectorC; c < sectorC + 3; c++) {
+            for (int r = sectorR; r < sectorR + 3; r++) {
+                SudokuCell sectorCell = get(c, r);
+                sector.add(sectorCell);
+                if (newValue != null && sectorCell != cell) {
+                    sectorCell.getDomain().remove(newValue);
+                }
+            }
+        }
+
+        if (oldValue != null) {
+            if (row.stream().noneMatch(c -> oldValue.equals(c.getValue()))) {
+                row.stream().filter(c -> !c.getDomain().contains(oldValue)).forEach(c -> c.getDomain().add(oldValue));
+            }
+            if (column.stream().noneMatch(c -> oldValue.equals(c.getValue()))) {
+                column.stream().filter(c -> !c.getDomain().contains(oldValue)).forEach(c -> c.getDomain().add(oldValue));
+            }
+            if (sector.stream().noneMatch(c -> oldValue.equals(c.getValue()))) {
+                sector.stream().filter(c -> !c.getDomain().contains(oldValue)).forEach(c -> c.getDomain().add(oldValue));
+            }
+        }
     };
     private final SudokuCell[] cells = new SudokuCell[81];
     private boolean restrictDomains;
@@ -23,18 +63,20 @@ public class SudokuModel {
         return cells[c * 9 + r];
     }
 
-    public SudokuCell getMin(Comparator<SudokuCell> comparator) {
-        return Stream.of(cells).min(comparator).orElse(null);
+    public Optional<SudokuCell> getMin(Predicate<SudokuCell> filter, Comparator<SudokuCell> comparator) {
+        return Stream.of(cells).filter(cell -> filter == null || filter.test(cell)).min(comparator);
     }
 
-    public SudokuCell getMax(Comparator<SudokuCell> comparator) {
-        return Stream.of(cells).max(comparator).orElse(null);
+    public Optional<SudokuCell> getMin(Comparator<SudokuCell> comparator) {
+        return getMin(null, comparator);
+    }
+
+    public Optional<SudokuCell> getMax(Comparator<SudokuCell> comparator) {
+        return Stream.of(cells).max(comparator);
     }
 
     private void applyToCells(Consumer<SudokuCell> function) {
-        for (SudokuCell cell : cells) {
-            function.accept(cell);
-        }
+        Stream.of(cells).forEach(function);
     }
 
     public void reset() {
@@ -57,7 +99,7 @@ public class SudokuModel {
                 for (int r = 0; r < 9; r++) {
                     Collection<Integer> row = rows.get(r);
                     Collection<Integer> sector = sectors.get(c / 3 + r / 3 * 3);
-                    SudokuCell cell = cells[c * 9 + r];
+                    SudokuCell cell = get(c, r);
                     Integer cellValue = cell.getValue();
                     if (cellValue != null) {
                         column.add(cell.getValue());
@@ -70,13 +112,14 @@ public class SudokuModel {
             for (int c = 0; c < 9; c++) {
                 Collection<Integer> column = columns.get(c);
                 for (int r = 0; r < 9; r++) {
-                    Collection<Integer> domain = new LinkedHashSet<>(FULL_SET);
+                    Collection<Integer> domain = new HashSet<>(FULL_SET);
                     Collection<Integer> row = rows.get(r);
                     Collection<Integer> sector = sectors.get(c / 3 + r / 3 * 3);
                     domain.removeAll(column);
                     domain.removeAll(row);
                     domain.removeAll(sector);
-                    SudokuCell cell = cells[c * 9 + r];
+                    SudokuCell cell = get(c, r);
+                    domain.add(cell.getValue());
                     cell.deafen();
                     cell.setDomain(domain);
                     cell.undeafen();
@@ -84,7 +127,11 @@ public class SudokuModel {
             }
             Stream.of(cells).forEach(c -> c.addListener(DOMAIN_RESTRICTOR));
         } else {
-            applyToCells(SudokuCell::resetDomain);
+            applyToCells(cell -> {
+                cell.deafen();
+                cell.resetDomain();
+                cell.undeafen();
+            });
             Stream.of(cells).forEach(c -> c.removeListener(DOMAIN_RESTRICTOR));
         }
         this.restrictDomains = value;
