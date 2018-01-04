@@ -13,8 +13,9 @@ import sudoku.data.SudokuModel;
 
 import java.io.File;
 import java.util.Comparator;
+import java.util.List;
 
-public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
+public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, SudokuCell.DomainChangeListener {
     private SudokuModel model = new SudokuModel();
     private final Stage stage;
     private FileChooser chooser;
@@ -45,7 +46,8 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
                     for (int ir = 0; ir < 3; ir++) {
                         SudokuCell cell = model.get(c * 3 + ic, r * 3 + ir);
                         pane.add(cell, ic, ir);
-                        cell.addListener(this);
+                        cell.addListener((SudokuCell.ValueChangeListener) this);
+                        cell.addListener((SudokuCell.DomainChangeListener) this);
                     }
                 }
             }
@@ -84,13 +86,23 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
         fileMenu.getItems().addAll(reset, save, load, new SeparatorMenuItem(), exit);
 
         Menu help = new Menu("Help");
+
+        MenuItem undo = new MenuItem("Undo");
+        undo.disableProperty().bind(model.undoIsEmpty());
+        undo.setOnAction(e -> model.undo());
+
+        MenuItem redo = new MenuItem("Redo");
+        redo.disableProperty().bind(model.redoIsEmpty());
+        redo.setOnAction(e -> model.redo());
+
         CheckMenuItem limitSelections = new CheckMenuItem("Limit Options");
         limitSelections.selectedProperty().addListener((observable, oldValue, newValue) -> model.restrictDomains(newValue));
 
         MenuItem hint = new MenuItem("Hint");
         hint.setOnAction(e -> model.getMin(cell -> cell.getValue() == null || cell.getDomain().size() > 2,
                 Comparator.comparingInt(cell -> cell.getDomain().size())).ifPresent(SudokuCell::setHint));
-        help.getItems().addAll(limitSelections, hint);
+
+        help.getItems().addAll(undo, redo, new SeparatorMenuItem(), limitSelections, hint);
 
         bar.getMenus().addAll(fileMenu, help);
         getChildren().addAll(bar);
@@ -110,5 +122,10 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener {
     @Override
     public void changed(SudokuCell cell, Integer oldValue, Integer newValue) {
         System.out.printf("%s : Previous=%s : Current=%s\n", cell, oldValue, newValue);
+    }
+
+    @Override
+    public void changed(SudokuCell cell, List<Integer> oldDomain, List<Integer> newDomain) {
+        System.out.printf("%s : Previous=%s : Current=%s\n", cell, oldDomain, newDomain);
     }
 }

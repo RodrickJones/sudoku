@@ -1,5 +1,10 @@
 package sudoku.data;
 
+import com.sun.javafx.collections.ObservableListWrapper;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanBinding;
+import javafx.collections.ObservableList;
+
 import java.io.*;
 import java.util.*;
 import java.util.function.Consumer;
@@ -11,6 +16,7 @@ public class SudokuModel {
         Collection<SudokuCell> row = new ArrayList<>(9);
         Collection<SudokuCell> column = new ArrayList<>(9);
         Collection<SudokuCell> sector = new ArrayList<>(9);
+
         for (int i = 0; i < 9; i++) {
             SudokuCell rowCell = get(i, cell.getRow());
             SudokuCell columnCell = get(cell.getColumn(), i);
@@ -25,6 +31,7 @@ public class SudokuModel {
                 }
             }
         }
+
         int sectorC = cell.getColumn() / 3 * 3;
         int sectorR = cell.getRow() / 3 * 3;
         for (int c = sectorC; c < sectorC + 3; c++) {
@@ -49,12 +56,22 @@ public class SudokuModel {
             }
         }
     };
+
+    private final ObservableList<CellChange> undoStack = new ObservableListWrapper<>(new LinkedList<>());
+    private final ObservableList<CellChange> redoStack = new ObservableListWrapper<>(new LinkedList<>());
+    private final SudokuCell.ValueChangeListener UNDO_LISTENER =
+            (cell, oldVal, newVal) -> {
+                undoStack.add(0, new CellChange(cell, oldVal, newVal));
+                redoStack.clear();
+            };
     private final SudokuCell[] cells = new SudokuCell[81];
     private boolean restrictDomains;
     public SudokuModel() {
         for (int c = 0; c < 9; c++) {
             for (int r = 0; r < 9; r++) {
-                cells[c * 9 + r] = new SudokuCell(c, r);
+                SudokuCell cell = new SudokuCell(c, r);
+                cell.addListener(UNDO_LISTENER);
+                cells[c * 9 + r] = cell;
             }
         }
     }
@@ -80,7 +97,29 @@ public class SudokuModel {
     }
 
     public void reset() {
+        undoStack.clear();
+        redoStack.clear();
         applyToCells(SudokuCell::reset);
+    }
+
+    public BooleanBinding undoIsEmpty() {
+        return Bindings.isEmpty(undoStack);
+    }
+
+    public void undo() {
+        CellChange change = undoStack.remove(0);
+        redoStack.add(0, change);
+        change.undo();
+    }
+
+    public BooleanBinding redoIsEmpty() {
+        return Bindings.isEmpty(redoStack);
+    }
+
+    public void redo() {
+        CellChange change = redoStack.remove(0);
+        undoStack.add(0, change);
+        change.redo();
     }
 
     public void restrictDomains(boolean value) {
@@ -176,6 +215,37 @@ public class SudokuModel {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private class CellChange {
+        private final SudokuCell cell;
+        private final Integer oldValue;
+        private final Integer newValue;
+
+        private CellChange(SudokuCell cell, Integer oldValue, Integer newValue) {
+            this.cell = cell;
+            this.oldValue = oldValue;
+            this.newValue = newValue;
+        }
+
+        private void undo() {
+            cell.deafen();
+            cell.setValue(oldValue);
+            if (restrictDomains) {
+                DOMAIN_RESTRICTOR.changed(cell, newValue, oldValue);
+            }
+            cell.undeafen();
+        }
+
+        private void redo() {
+            cell.deafen();
+            cell.setValue(newValue);
+            if (restrictDomains) {
+                DOMAIN_RESTRICTOR.changed(cell, oldValue, newValue);
+            }
+            cell.undeafen();
+        }
+
     }
 
 }

@@ -44,7 +44,8 @@ public class SudokuCell extends ComboBox<Integer> {
                 if (c.wasAdded()) {
                     oldDomain.removeAll(c.getAddedSubList());
                 } else if (c.wasRemoved()) {
-                    oldDomain.addAll(c.getRemoved());
+                    Integer firstRemoved = c.getRemoved().get(0);
+                    oldDomain.addAll(firstRemoved == null ? 0 : firstRemoved, c.getRemoved());
                 }
                 domainChangeListeners.forEach(l -> l.changed(this, oldDomain, newDomain));
             }
