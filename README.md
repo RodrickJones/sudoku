@@ -8,10 +8,10 @@ An implementation of the classic puzzle game [Sudoku](https://en.wikipedia.org/w
 * Saving/loading of games
 * Listeners for cell value changes and cell domain changes
 * Reduction of the available cell options based on the current game board
+* Undoing/Redoing of actions
 
 #### Planned features
 * Generation of a sudoku puzzle
-* Undoing and redoing of actions
 * Graphical hints for when a cell is incorrect
 * Solving of the puzzle, both step by step or in full
 * Multiple implementations of puzzle solvers

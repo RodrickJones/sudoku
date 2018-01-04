@@ -17,7 +17,6 @@ public class SudokuCell extends ComboBox<Integer> {
 
     private final ObservableList<Integer> domain = new ObservableListWrapper<>(
             new ArrayList<Integer>(10));
-    private final SortedList<Integer> sorted = new SortedList<>(domain, Comparator.comparingInt(i -> i == null ? 0 : i));
     private final int column, row;
     private final Collection<ValueChangeListener> valueChangeListeners = new CopyOnWriteArrayList<>();
     private final Collection<DomainChangeListener> domainChangeListeners = new CopyOnWriteArrayList<>();
@@ -25,11 +24,12 @@ public class SudokuCell extends ComboBox<Integer> {
     SudokuCell(int column, int row) {
         getStyleClass().add(SUDOKU_CELL_CLASS);
         setPrefSize(50, 50);
+
         this.column = column;
         this.row = row;
-        domain.addAll(null, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+        this.domain.addAll(null, 1, 2, 3, 4, 5, 6, 7, 8, 9);
 
-        setItems(sorted);
+        setItems(new SortedList<>(domain, Comparator.comparingInt(i -> i == null ? 0 : i)));
         getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (!deafen) {
                 valueChangeListeners.forEach(l -> l.changed(this, oldVal, newVal));
@@ -44,9 +44,10 @@ public class SudokuCell extends ComboBox<Integer> {
                 if (c.wasAdded()) {
                     oldDomain.removeAll(c.getAddedSubList());
                 } else if (c.wasRemoved()) {
-                    Integer firstRemoved = c.getRemoved().get(0);
-                    oldDomain.addAll(firstRemoved == null ? 0 : firstRemoved, c.getRemoved());
+                    oldDomain.addAll(c.getRemoved());
                 }
+                oldDomain.sort(Comparator.comparingInt(i -> i == null ? 0 : i));
+                newDomain.sort(Comparator.comparingInt(i -> i == null ? 0 : i));
                 domainChangeListeners.forEach(l -> l.changed(this, oldDomain, newDomain));
             }
         });
