@@ -113,6 +113,13 @@ public class SudokuModel {
         Stream.of(cells).forEach(function);
     }
 
+    public void reset(int n) {
+        this.n = n;
+        undoStack.clear();
+        redoStack.clear();
+        init();
+    }
+
     public void reset() {
         undoStack.clear();
         redoStack.clear();

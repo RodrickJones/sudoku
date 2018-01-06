@@ -15,9 +15,9 @@ import sudoku.solvers.dfs.DepthFirstSearchSolver;
 
 import java.io.File;
 import java.util.Comparator;
-import java.util.List;
+import java.util.Optional;
 
-public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, SudokuCell.DomainChangeListener {
+public class SudokuView extends VBox {
     private SudokuCell lastHint;
 
     private final SudokuModel model;
@@ -61,8 +61,6 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
                     for (int ir = 0; ir < sqrtN; ir++) {
                         SudokuCell cell = model.get(c * sqrtN + ic, r * sqrtN + ir);
                         pane.add(cell, ic, ir);
-                        cell.addListener((SudokuCell.ValueChangeListener) this);
-                        cell.addListener((SudokuCell.DomainChangeListener) this);
                     }
                 }
             }
@@ -81,6 +79,27 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
 
     private Menu createFileMenu() {
         Menu fileMenu = new Menu("File");
+
+        MenuItem newGame = new MenuItem("New");
+        newGame.setOnAction(event -> {
+            TextInputDialog dialog = new TextInputDialog("9");
+            dialog.setContentText("Side length:");
+            Optional<String> res;
+            int side = -1;
+            while (side == -1) {
+                res = dialog.showAndWait();
+                if (res.isPresent()) {
+                    try {
+                        side = Integer.parseInt(res.get());
+                    } catch (NumberFormatException e) {
+                        side = -1;
+                    }
+                }
+            }
+            model.reset(side);
+            createDisplayFor(model);
+        });
+
         MenuItem reset = new MenuItem("Reset");
         reset.setOnAction(e -> model.reset());
 
@@ -106,7 +125,7 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
             }
         });
 
-        fileMenu.getItems().addAll(reset, save, load, new SeparatorMenuItem(), exit);
+        fileMenu.getItems().addAll(newGame, reset, save, load, new SeparatorMenuItem(), exit);
         return fileMenu;
     }
 
@@ -162,7 +181,7 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
         return help;
     }
 
-    public synchronized FileChooser getChooser() {
+    private synchronized FileChooser getChooser() {
         if (chooser == null) {
             chooser = new FileChooser();
             chooser.getExtensionFilters().addAll(
@@ -171,15 +190,5 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
             );
         }
         return chooser;
-    }
-
-    @Override
-    public void changed(SudokuCell cell, Integer oldValue, Integer newValue) {
-        System.out.printf("%s : Previous=%s : Current=%s\n", cell, oldValue, newValue);
-    }
-
-    @Override
-    public void changed(SudokuCell cell, List<Integer> oldDomain, List<Integer> newDomain) {
-        System.out.printf("%s : Previous=%s : Current=%s\n", cell, oldDomain, newDomain);
     }
 }
