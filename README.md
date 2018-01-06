@@ -10,8 +10,9 @@ An implementation of the classic puzzle game [Sudoku](https://en.wikipedia.org/w
 * Reduction of the available cell options based on the current game board
 * Undoing/Redoing of actions
 * Graphical hints for when a cell is incorrect
+* Puzzle solving
+* N*N boards
 
 #### Planned features
 * Generation of a sudoku puzzle
-* Solving of the puzzle
 * Multiple implementations of puzzle solvers

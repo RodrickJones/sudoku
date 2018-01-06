@@ -15,13 +15,21 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class SudokuModel {
+    private final ObservableList<CellChange> undoStack = new ObservableListWrapper<>(new LinkedList<>());
+    private final ObservableList<CellChange> redoStack = new ObservableListWrapper<>(new LinkedList<>());
+    private int n;
+    private SudokuCell[] cells;
+    private final SudokuCell.ValueChangeListener UNDO_LISTENER =
+            (cell, oldVal, newVal) -> {
+                undoStack.add(0, new CellChange(cell, oldVal, newVal));
+                redoStack.clear();
+            };
     private final SudokuCell.ValueChangeListener DOMAIN_RESTRICTOR = (cell, oldValue, newValue) -> {
-        //TODO: Try to extract to solver
-        Collection<SudokuCell> row = new ArrayList<>(9);
-        Collection<SudokuCell> column = new ArrayList<>(9);
-        Collection<SudokuCell> sector = new ArrayList<>(9);
+        Collection<SudokuCell> row = new ArrayList<>(n);
+        Collection<SudokuCell> column = new ArrayList<>(n);
+        Collection<SudokuCell> sector = new ArrayList<>(n);
 
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < n; i++) {
             SudokuCell rowCell = get(i, cell.getRow());
             SudokuCell columnCell = get(cell.getColumn(), i);
             row.add(rowCell);
@@ -36,10 +44,11 @@ public class SudokuModel {
             }
         }
 
-        int sectorC = cell.getColumn() / 3 * 3;
-        int sectorR = cell.getRow() / 3 * 3;
-        for (int c = sectorC; c < sectorC + 3; c++) {
-            for (int r = sectorR; r < sectorR + 3; r++) {
+        int sqrtN = (int) Math.sqrt(n);
+        int sectorC = cell.getColumn() / sqrtN * sqrtN;
+        int sectorR = cell.getRow() / sqrtN * sqrtN;
+        for (int c = sectorC; c < sectorC + sqrtN; c++) {
+            for (int r = sectorR; r < sectorR + sqrtN; r++) {
                 SudokuCell sectorCell = get(c, r);
                 sector.add(sectorCell);
                 if (newValue != null && sectorCell != cell) {
@@ -60,30 +69,32 @@ public class SudokuModel {
             }
         }
     };
-
-    private final ObservableList<CellChange> undoStack = new ObservableListWrapper<>(new LinkedList<>());
-    private final ObservableList<CellChange> redoStack = new ObservableListWrapper<>(new LinkedList<>());
-    private final SudokuCell.ValueChangeListener UNDO_LISTENER =
-            (cell, oldVal, newVal) -> {
-                undoStack.add(0, new CellChange(cell, oldVal, newVal));
-                redoStack.clear();
-            };
-    private final SudokuCell[] cells = new SudokuCell[81];
     private boolean restrictDomains;
 
-    //TODO: Allow for n-Sudoku
-    public SudokuModel() {
-        for (int c = 0; c < 9; c++) {
-            for (int r = 0; r < 9; r++) {
-                SudokuCell cell = new SudokuCell(c, r);
-                cell.addListener(UNDO_LISTENER);
-                cells[r * 9 + c] = cell;
-            }
+    public SudokuModel(int n) {
+        this.n = n;
+        init();
+    }
+
+    private void init() {
+        int sqrtN = (int) Math.sqrt(n);
+        if (sqrtN * sqrtN != n) {
+            throw new IllegalArgumentException("n must be a square integer");
+        }
+        this.cells = new SudokuCell[n * n];
+        for (int i = 0; i < cells.length; i++) {
+            SudokuCell cell = new SudokuCell(i, n);
+            cell.addListener(UNDO_LISTENER);
+            cells[i] = cell;
         }
     }
 
+    public int getN() {
+        return n;
+    }
+
     public SudokuCell get(int c, int r) {
-        return cells[r * 9 + c];
+        return cells[r * n + c];
     }
 
     public Optional<SudokuCell> getMin(Predicate<SudokuCell> filter, Comparator<SudokuCell> comparator) {
@@ -130,21 +141,23 @@ public class SudokuModel {
 
 
     public boolean isComplete() {
-        List<Collection<Integer>> rows = new ArrayList<>(9);
-        List<Collection<Integer>> columns = new ArrayList<>(9);
-        List<Collection<Integer>> sectors = new ArrayList<>(9);
+        List<Collection<Integer>> rows = new ArrayList<>(n);
+        List<Collection<Integer>> columns = new ArrayList<>(n);
+        List<Collection<Integer>> sectors = new ArrayList<>(n);
 
-        for (int i = 0; i < 9; i++) {
-            rows.add(new LinkedHashSet<>(9));
-            columns.add(new LinkedHashSet<>(9));
-            sectors.add(new LinkedHashSet<>(9));
+        for (int i = 0; i < n; i++) {
+            rows.add(new LinkedHashSet<>(n));
+            columns.add(new LinkedHashSet<>(n));
+            sectors.add(new LinkedHashSet<>(n));
         }
 
-        for (int c = 0; c < 9; c++) {
+        final int sqrtN = (int) Math.sqrt(n);
+
+        for (int c = 0; c < n; c++) {
             Collection<Integer> column = columns.get(c);
-            for (int r = 0; r < 9; r++) {
+            for (int r = 0; r < n; r++) {
                 Collection<Integer> row = rows.get(r);
-                Collection<Integer> sector = sectors.get(c / 3 + r / 3 * 3);
+                Collection<Integer> sector = sectors.get(c / sqrtN + r / sqrtN * sqrtN);
                 SudokuCell cell = get(c, r);
                 Integer cellValue = cell.getValue();
                 if (cellValue == null ||
@@ -161,11 +174,11 @@ public class SudokuModel {
 
     public void restrictDomains(boolean value) {
         if (value) {
-            boolean[][][] domains = Solver.calculateDomains(toMatrix());
+            boolean[][][] domains = Solver.calculateDomains(toMatrix(), null, n);
             applyToCells(cell -> {
                 cell.deafen();
                 boolean[] domain = domains[cell.getColumn()][cell.getRow()];
-                cell.setDomain(IntStream.range(1, 10).filter(i -> domain[i]).boxed().collect(Collectors.toList()));
+                cell.setDomain(IntStream.rangeClosed(1, n).filter(i -> domain[i]).boxed().collect(Collectors.toList()));
                 cell.undeafen();
                 cell.addListener(DOMAIN_RESTRICTOR);
             });
@@ -181,17 +194,62 @@ public class SudokuModel {
     }
 
     public void save(File saveFile) {
-        try (DataOutputStream out = new DataOutputStream(new FileOutputStream(saveFile))) {
-            applyToCells(cell -> {
-                try {
-                    Integer val = cell.getValue();
-                    out.writeByte(val == null ? 0 : val.byteValue());
-                    out.writeBoolean(cell.isLocked());
-                } catch (IOException e) {
-                    System.err.println("IOException occurred while writing data for " + cell);
-                    e.printStackTrace();
+        try (PrintWriter writer = new PrintWriter(new FileOutputStream(saveFile))) {
+            //write n
+            writer.println(n);
+            //write value table
+            for (int r = 0; r < n; r++) {
+                for (int c = 0; c < n; c++) {
+                    Integer val = get(c, r).getValue();
+                    writer.print(val == null ? 0 : val);
+                    writer.print(' ');
                 }
-            });
+                writer.println();
+            }
+            //write blank line
+            writer.println();
+            //write locked table
+            for (int r = 0; r < n; r++) {
+                for (int c = 0; c < n; c++) {
+                    writer.print(get(c, r).isLocked() ? 1 : 0);
+                    writer.print(' ');
+                }
+                writer.println();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void load(File loadFile) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(loadFile))) {
+            //read n count
+            String line = reader.readLine();
+            int n = Integer.parseInt(line);
+            this.n = n;
+            this.init();
+            String[] split;
+            //read value table
+            for (int r = 0; r < n; r++) {
+                split = reader.readLine().split(" ");
+                for (int c = 0; c < n; c++) {
+                    int value = Integer.parseInt(split[c]);
+                    SudokuCell cell = get(c, r);
+                    cell.deafen();
+                    cell.setValue(value == 0 ? null : value);
+                    cell.undeafen();
+                }
+            }
+            //read blank line
+            reader.readLine();
+            //read locked table
+            for (int r = 0; r < n; r++) {
+                split = reader.readLine().split(" ");
+                for (int c = 0; c < n; c++) {
+                    get(c, r).setLocked(Integer.parseInt(split[c]) == 1);
+                }
+            }
+            restrictDomains(restrictDomains);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -212,38 +270,14 @@ public class SudokuModel {
     }
 
     public int[][] toMatrix() {
-        int[][] matrix = new int[9][9];
-        for (int c = 0; c < 9; c++) {
-            for (int r = 0; r < 9; r++) {
+        int[][] matrix = new int[n][n];
+        for (int c = 0; c < n; c++) {
+            for (int r = 0; r < n; r++) {
                 Integer cellValue = get(c, r).getValue();
                 matrix[c][r] = cellValue == null ? 0 : cellValue;
             }
         }
         return matrix;
-    }
-
-    public void load(File loadFile) {
-        try (DataInputStream in = new DataInputStream(new FileInputStream(loadFile))) {
-            applyToCells(cell -> {
-                try {
-                    cell.deafen();
-                    int val = in.readUnsignedByte();
-                    cell.setValue(val == 0 ? null : val);
-                    cell.resetDomain();
-                    if (in.readBoolean()) {
-                        cell.lock();
-                    }
-                    cell.undeafen();
-                } catch (IOException e) {
-                    System.err.println("IOException thrown reading data for " + cell);
-                    e.printStackTrace();
-                    cell.reset();
-                }
-            });
-            restrictDomains(restrictDomains);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     private class CellChange {

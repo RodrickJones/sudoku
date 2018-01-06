@@ -14,31 +14,32 @@ public abstract class Solver {
         this.board = MatrixUtil.copyOf(board);
     }
 
-    public static boolean[][][] calculateDomains(int[][] board, boolean[][][] domains) {
+    public static boolean[][][] calculateDomains(final int[][] board, boolean[][][] domains, final int n) {
         //Declaration and initialization
         if (domains == null) {
-            domains = new boolean[9][9][10];
+            domains = new boolean[n][n][n + 1];
         }
-        boolean[][] rowDomains = new boolean[9][10];
-        boolean[][] colDomains = new boolean[9][10];
-        boolean[][] secDomains = new boolean[9][10];
-        boolean[] TRUE = new boolean[10];
+        boolean[][] rowDomains = new boolean[n][n + 1];
+        boolean[][] colDomains = new boolean[n][n + 1];
+        boolean[][] secDomains = new boolean[n][n + 1];
+        boolean[] TRUE = new boolean[n + 1];
         Arrays.fill(TRUE, true);
         for (boolean[][] mat : domains) {
             for (boolean[] arr : mat) {
-                System.arraycopy(TRUE, 0, arr, 0, 10);
+                System.arraycopy(TRUE, 0, arr, 0, n + 1);
             }
         }
 
-        for (int i = 0; i < 9; i++) {
-            System.arraycopy(TRUE, 0, rowDomains[i], 0, 10);
-            System.arraycopy(TRUE, 0, colDomains[i], 0, 10);
-            System.arraycopy(TRUE, 0, secDomains[i], 0, 10);
+        for (int i = 0; i < n; i++) {
+            System.arraycopy(TRUE, 0, rowDomains[i], 0, n + 1);
+            System.arraycopy(TRUE, 0, colDomains[i], 0, n + 1);
+            System.arraycopy(TRUE, 0, secDomains[i], 0, n + 1);
         }
 
         //Building the row/col/sec domains
-        for (int c = 0; c < 9; c++) {
-            for (int r = 0; r < 9; r++) {
+        int sqrtN = (int) Math.sqrt(n);
+        for (int c = 0; c < n; c++) {
+            for (int r = 0; r < n; r++) {
                 int value = board[c][r];
                 if (value == 0) {
                     continue;
@@ -46,17 +47,17 @@ public abstract class Solver {
                 //false indicates that the value has been seen
                 rowDomains[r][value] = false;
                 colDomains[c][value] = false;
-                secDomains[c / 3 + r / 3 * 3][value] = false;
+                secDomains[c / sqrtN + r / sqrtN * sqrtN][value] = false;
             }
         }
 
-        for (int c = 0; c < 9; c++) {
-            for (int r = 0; r < 9; r++) {
+        for (int c = 0; c < n; c++) {
+            for (int r = 0; r < n; r++) {
                 boolean[] domain = domains[c][r];
                 boolean[] row = rowDomains[r];
                 boolean[] col = colDomains[c];
-                boolean[] sec = secDomains[c / 3 + r / 3 * 3];
-                for (int i = 1; i < 10; i++) {
+                boolean[] sec = secDomains[c / sqrtN + r / sqrtN * sqrtN];
+                for (int i = 1; i < n + 1; i++) {
                     if (i == board[c][r]) {
                         continue;
                     }
@@ -66,10 +67,6 @@ public abstract class Solver {
         }
 
         return domains;
-    }
-
-    public static boolean[][][] calculateDomains(int[][] board) {
-        return calculateDomains(board, null);
     }
 
     /**

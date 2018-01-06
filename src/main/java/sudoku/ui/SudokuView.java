@@ -4,6 +4,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
@@ -18,10 +19,14 @@ import java.util.List;
 
 public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, SudokuCell.DomainChangeListener {
     private SudokuCell lastHint;
-    private SudokuModel model = new SudokuModel();
+
+    private final SudokuModel model;
     private final Stage stage;
+    private final ScrollPane boardPane;
     private FileChooser chooser;
-    public SudokuView(Stage stage) {
+
+    public SudokuView(Stage stage, int n) {
+        this.model = new SudokuModel(n);
         this.stage = stage;
         setAlignment(Pos.TOP_CENTER);
         setSpacing(5);
@@ -32,21 +37,29 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
         heading.setFont(new Font(24));
         getChildren().add(heading);
 
+        boardPane = new ScrollPane();
+        setFillWidth(true);
+        setVgrow(boardPane, Priority.ALWAYS);
+        getChildren().add(boardPane);
+        createDisplayFor(model);
+    }
+
+    private void createDisplayFor(SudokuModel model) {
         GridPane parentPane = new GridPane();
         parentPane.setPadding(new Insets(5, 5, 5, 5));
-        getChildren().add(parentPane);
         parentPane.setHgap(5);
         parentPane.setVgap(5);
-        for (int c = 0; c < 3; c++) {
-            for (int r = 0; r < 3; r++) {
+        int sqrtN = (int) Math.sqrt(model.getN());
+        for (int c = 0; c < sqrtN; c++) {
+            for (int r = 0; r < sqrtN; r++) {
                 GridPane pane = new GridPane();
                 pane.setAlignment(Pos.TOP_CENTER);
                 pane.setHgap(1);
                 pane.setVgap(1);
                 parentPane.add(pane, c, r);
-                for (int ic = 0; ic < 3; ic++) {
-                    for (int ir = 0; ir < 3; ir++) {
-                        SudokuCell cell = model.get(c * 3 + ic, r * 3 + ir);
+                for (int ic = 0; ic < sqrtN; ic++) {
+                    for (int ir = 0; ir < sqrtN; ir++) {
+                        SudokuCell cell = model.get(c * sqrtN + ic, r * sqrtN + ir);
                         pane.add(cell, ic, ir);
                         cell.addListener((SudokuCell.ValueChangeListener) this);
                         cell.addListener((SudokuCell.DomainChangeListener) this);
@@ -54,7 +67,10 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
                 }
             }
         }
-        autosize();
+        parentPane.setAlignment(Pos.TOP_CENTER);
+        boardPane.setFitToWidth(true);
+        boardPane.setFitToHeight(true);
+        boardPane.setContent(parentPane);
     }
 
     private void createMenus() {
@@ -86,6 +102,7 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
             File loadFile = chooser.showOpenDialog(stage);
             if (loadFile != null) {
                 model.load(loadFile);
+                createDisplayFor(model);
             }
         });
 
@@ -134,7 +151,6 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
 
         MenuItem solve = new MenuItem("Solve");
         solve.setOnAction(e -> {
-            //TODO: Show some indication of progress?
             DepthFirstSearchSolver s = new DepthFirstSearchSolver(model.toMatrix());
             long start = System.currentTimeMillis();
             s.findSingleSolution();

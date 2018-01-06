@@ -7,13 +7,13 @@ import java.util.stream.IntStream;
 
 public class DepthFirstSearchSolver extends Solver {
     private final int n;
+    private final int sqrtN;
     private boolean interrupt;
 
-    //TODO: investigate whether keeping a domain matrix is beneficial
-    // Could be used to optimally select the next cell
     public DepthFirstSearchSolver(int[][] board) {
         super(board);
-        n = board.length;
+        this.n = board.length;
+        this.sqrtN = (int) Math.sqrt(n);
     }
 
     @Override
@@ -32,7 +32,7 @@ public class DepthFirstSearchSolver extends Solver {
         if (interrupt) {
             return;
         }
-        if (c == 9) {
+        if (c == n) {
             solutions.add(MatrixUtil.copyOf(board));
             if (findSingle) {
                 interrupt = true;
@@ -52,17 +52,17 @@ public class DepthFirstSearchSolver extends Solver {
 
     private boolean canSelect(int column, int row, int value) {
         //check column and row
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < n; i++) {
             if (board[column][i] == value
                     || board[i][row] == value) {
                 return false;
             }
         }
         //check sector
-        int colStart = column / 3 * 3;
-        int rowStart = row / 3 * 3;
-        for (int c = colStart; c < colStart + 3; c++) {
-            for (int r = rowStart; r < rowStart + 3; r++) {
+        int colStart = column / sqrtN * sqrtN;
+        int rowStart = row / sqrtN * sqrtN;
+        for (int c = colStart; c < colStart + sqrtN; c++) {
+            for (int r = rowStart; r < rowStart + sqrtN; r++) {
                 if (board[c][r] == value) {
                     return false;
                 }

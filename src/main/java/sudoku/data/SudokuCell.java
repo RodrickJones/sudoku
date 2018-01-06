@@ -7,28 +7,34 @@ import javafx.collections.transformation.SortedList;
 import javafx.css.PseudoClass;
 import javafx.scene.control.ComboBox;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class SudokuCell extends ComboBox<Integer> {
-    //TODO: Separate ComboBox from CCell
     private static final String SUDOKU_CELL_CLASS = "sudoku-cell";
     private static final PseudoClass INCORRECT = PseudoClass.getPseudoClass("incorrect");
     private static final PseudoClass HINT = PseudoClass.getPseudoClass("hint");
 
-    private final ObservableList<Integer> domain = new ObservableListWrapper<>(
-            new ArrayList<Integer>(10));
-    private final int column, row;
+    private final ObservableList<Integer> domain;
+    private final int column;
+    private final int row;
+    private final int n;
     private final Collection<ValueChangeListener> valueChangeListeners = new CopyOnWriteArrayList<>();
     private final Collection<DomainChangeListener> domainChangeListeners = new CopyOnWriteArrayList<>();
     private boolean deafen;
-    SudokuCell(int column, int row) {
-        getStyleClass().add(SUDOKU_CELL_CLASS);
-        setPrefSize(50, 50);
 
+    SudokuCell(int column, int row, int n) {
+        getStyleClass().add(SUDOKU_CELL_CLASS);
         this.column = column;
         this.row = row;
-        this.domain.addAll(null, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+        this.n = n;
+        this.domain = new ObservableListWrapper<>(new ArrayList<>(n + 1));
+        resetDomain();
 
         setItems(new SortedList<>(domain, Comparator.comparingInt(i -> i == null ? 0 : i)));
         getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
@@ -52,9 +58,12 @@ public class SudokuCell extends ComboBox<Integer> {
                 newDomain.sort(Comparator.comparingInt(i -> i == null ? 0 : i));
                 domainChangeListeners.forEach(l -> l.changed(this, oldDomain, newDomain));
             }
-            pseudoClassStateChanged(INCORRECT, c.getList().size() == 1);
+            pseudoClassStateChanged(INCORRECT, isInvalid());
         });
-        setCenterShape(true);
+    }
+
+    SudokuCell(int index, int n) {
+        this(index % n, index / n, n);
     }
 
     public void reset() {
@@ -71,7 +80,7 @@ public class SudokuCell extends ComboBox<Integer> {
     }
 
     public void resetDomain() {
-        setDomain(Arrays.asList(null, 1, 2, 3, 4, 5, 6, 7, 8, 9));
+        setDomain(IntStream.rangeClosed(1, n).boxed().collect(Collectors.toList()));
     }
 
     public void setDomain(Collection<Integer> domain) {
@@ -120,12 +129,8 @@ public class SudokuCell extends ComboBox<Integer> {
         return deafen;
     }
 
-    public void lock() {
-        setDisabled(true);
-    }
-
-    public void unlock() {
-        setDisabled(false);
+    public void setLocked(boolean lock) {
+        setDisabled(lock);
     }
 
     public boolean isLocked() {
@@ -142,7 +147,7 @@ public class SudokuCell extends ComboBox<Integer> {
 
     @Override
     public String toString() {
-        return "SudokuCell(column=" + column + ", row=" + row + ", locked=" + isLocked() + ")";
+        return "SudokuCell(column=" + column + ", row=" + row + ", value=" + getValue() + ", locked=" + isLocked() + ")";
     }
 
 
