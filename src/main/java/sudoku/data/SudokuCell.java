@@ -11,6 +11,7 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class SudokuCell extends ComboBox<Integer> {
+    //TODO: Separate ComboBox from CCell
     private static final String SUDOKU_CELL_CLASS = "sudoku-cell";
     private static final PseudoClass INCORRECT = PseudoClass.getPseudoClass("incorrect");
     private static final PseudoClass HINT = PseudoClass.getPseudoClass("hint");
@@ -34,6 +35,7 @@ public class SudokuCell extends ComboBox<Integer> {
             if (!deafen) {
                 valueChangeListeners.forEach(l -> l.changed(this, oldVal, newVal));
             }
+            pseudoClassStateChanged(HINT, false);
         });
 
         domain.addListener((ListChangeListener<Integer>) c -> {
@@ -50,6 +52,7 @@ public class SudokuCell extends ComboBox<Integer> {
                 newDomain.sort(Comparator.comparingInt(i -> i == null ? 0 : i));
                 domainChangeListeners.forEach(l -> l.changed(this, oldDomain, newDomain));
             }
+            pseudoClassStateChanged(INCORRECT, c.getList().size() == 1);
         });
         setCenterShape(true);
     }
@@ -129,8 +132,12 @@ public class SudokuCell extends ComboBox<Integer> {
         return isDisabled();
     }
 
-    public void setHint() {
-        pseudoClassStateChanged(HINT, true);
+    public void setHint(boolean active) {
+        pseudoClassStateChanged(HINT, active);
+    }
+
+    public boolean isInvalid() {
+        return domain.size() == 1;
     }
 
     @Override

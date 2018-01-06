@@ -10,12 +10,14 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import sudoku.data.SudokuCell;
 import sudoku.data.SudokuModel;
+import sudoku.solvers.dfs.DepthFirstSearchSolver;
 
 import java.io.File;
 import java.util.Comparator;
 import java.util.List;
 
 public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, SudokuCell.DomainChangeListener {
+    private SudokuCell lastHint;
     private SudokuModel model = new SudokuModel();
     private final Stage stage;
     private FileChooser chooser;
@@ -57,7 +59,11 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
 
     private void createMenus() {
         MenuBar bar = new MenuBar();
+        bar.getMenus().addAll(createFileMenu(), createHelpMenu());
+        getChildren().addAll(bar);
+    }
 
+    private Menu createFileMenu() {
         Menu fileMenu = new Menu("File");
         MenuItem reset = new MenuItem("Reset");
         reset.setOnAction(e -> model.reset());
@@ -84,7 +90,10 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
         });
 
         fileMenu.getItems().addAll(reset, save, load, new SeparatorMenuItem(), exit);
+        return fileMenu;
+    }
 
+    private Menu createHelpMenu() {
         Menu help = new Menu("Help");
 
         MenuItem undo = new MenuItem("Undo");
@@ -100,12 +109,41 @@ public class SudokuView extends VBox implements SudokuCell.ValueChangeListener, 
 
         MenuItem hint = new MenuItem("Hint");
         hint.setOnAction(e -> model.getMin(cell -> cell.getValue() == null || cell.getDomain().size() > 2,
-                Comparator.comparingInt(cell -> cell.getDomain().size())).ifPresent(SudokuCell::setHint));
+                Comparator.comparingInt(cell -> cell.getDomain().size()))
+                .ifPresent(c -> {
+                    if (lastHint != null) {
+                        lastHint.setHint(false);
+                    }
+                    c.setHint(true);
+                    lastHint = c;
+                }));
 
-        help.getItems().addAll(undo, redo, new SeparatorMenuItem(), limitSelections, hint);
 
-        bar.getMenus().addAll(fileMenu, help);
-        getChildren().addAll(bar);
+        MenuItem check = new MenuItem("Check");
+        check.setOnAction(e -> {
+            Dialog dialog;
+            if (model.isComplete()) {
+                dialog = new Alert(Alert.AlertType.CONFIRMATION, "Game is complete and valid!");
+                System.out.println("Model is complete");
+            } else {
+                dialog = new Alert(Alert.AlertType.ERROR, "Game is incomplete or invalid!");
+                System.out.println("Model is not complete");
+            }
+            dialog.show();
+        });
+
+        MenuItem solve = new MenuItem("Solve");
+        solve.setOnAction(e -> {
+            //TODO: Show some indication of progress?
+            DepthFirstSearchSolver s = new DepthFirstSearchSolver(model.toMatrix());
+            long start = System.currentTimeMillis();
+            s.findSingleSolution();
+            System.out.println(System.currentTimeMillis() - start + "ms to solve");
+            model.fromMatrix(s.getSolution());
+        });
+
+        help.getItems().addAll(undo, redo, new SeparatorMenuItem(), limitSelections, hint, check, solve);
+        return help;
     }
 
     public synchronized FileChooser getChooser() {

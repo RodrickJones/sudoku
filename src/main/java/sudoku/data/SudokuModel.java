@@ -4,15 +4,19 @@ import com.sun.javafx.collections.ObservableListWrapper;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.collections.ObservableList;
+import sudoku.solvers.Solver;
 
 import java.io.*;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class SudokuModel {
     private final SudokuCell.ValueChangeListener DOMAIN_RESTRICTOR = (cell, oldValue, newValue) -> {
+        //TODO: Try to extract to solver
         Collection<SudokuCell> row = new ArrayList<>(9);
         Collection<SudokuCell> column = new ArrayList<>(9);
         Collection<SudokuCell> sector = new ArrayList<>(9);
@@ -66,6 +70,8 @@ public class SudokuModel {
             };
     private final SudokuCell[] cells = new SudokuCell[81];
     private boolean restrictDomains;
+
+    //TODO: Allow for n-Sudoku
     public SudokuModel() {
         for (int c = 0; c < 9; c++) {
             for (int r = 0; r < 9; r++) {
@@ -77,7 +83,7 @@ public class SudokuModel {
     }
 
     public SudokuCell get(int c, int r) {
-        return cells[c * 9 + r];
+        return cells[r * 9 + c];
     }
 
     public Optional<SudokuCell> getMin(Predicate<SudokuCell> filter, Comparator<SudokuCell> comparator) {
@@ -122,56 +128,54 @@ public class SudokuModel {
         change.redo();
     }
 
+
+    public boolean isComplete() {
+        List<Collection<Integer>> rows = new ArrayList<>(9);
+        List<Collection<Integer>> columns = new ArrayList<>(9);
+        List<Collection<Integer>> sectors = new ArrayList<>(9);
+
+        for (int i = 0; i < 9; i++) {
+            rows.add(new LinkedHashSet<>(9));
+            columns.add(new LinkedHashSet<>(9));
+            sectors.add(new LinkedHashSet<>(9));
+        }
+
+        for (int c = 0; c < 9; c++) {
+            Collection<Integer> column = columns.get(c);
+            for (int r = 0; r < 9; r++) {
+                Collection<Integer> row = rows.get(r);
+                Collection<Integer> sector = sectors.get(c / 3 + r / 3 * 3);
+                SudokuCell cell = get(c, r);
+                Integer cellValue = cell.getValue();
+                if (cellValue == null ||
+                        !column.add(cellValue) ||
+                        !row.add(cellValue) ||
+                        !sector.add(cellValue)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     public void restrictDomains(boolean value) {
         if (value) {
-            final List<Integer> FULL_SET = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9);
-            List<Collection<Integer>> rows = new ArrayList<>(9);
-            List<Collection<Integer>> columns = new ArrayList<>(9);
-            List<Collection<Integer>> sectors = new ArrayList<>(9);
-            for (int i = 0; i < 9; i++) {
-                rows.add(new LinkedHashSet<>(9));
-                columns.add(new LinkedHashSet<>(9));
-                sectors.add(new LinkedHashSet<>(9));
-            }
-            for (int c = 0; c < 9; c++) {
-                Collection<Integer> column = columns.get(c);
-                for (int r = 0; r < 9; r++) {
-                    Collection<Integer> row = rows.get(r);
-                    Collection<Integer> sector = sectors.get(c / 3 + r / 3 * 3);
-                    SudokuCell cell = get(c, r);
-                    Integer cellValue = cell.getValue();
-                    if (cellValue != null) {
-                        column.add(cell.getValue());
-                        row.add(cellValue);
-                        sector.add(cellValue);
-                    }
-                }
-            }
-
-            for (int c = 0; c < 9; c++) {
-                Collection<Integer> column = columns.get(c);
-                for (int r = 0; r < 9; r++) {
-                    Collection<Integer> domain = new HashSet<>(FULL_SET);
-                    Collection<Integer> row = rows.get(r);
-                    Collection<Integer> sector = sectors.get(c / 3 + r / 3 * 3);
-                    domain.removeAll(column);
-                    domain.removeAll(row);
-                    domain.removeAll(sector);
-                    SudokuCell cell = get(c, r);
-                    domain.add(cell.getValue());
-                    cell.deafen();
-                    cell.setDomain(domain);
-                    cell.undeafen();
-                }
-            }
-            Stream.of(cells).forEach(c -> c.addListener(DOMAIN_RESTRICTOR));
+            boolean[][][] domains = Solver.calculateDomains(toMatrix());
+            applyToCells(cell -> {
+                cell.deafen();
+                boolean[] domain = domains[cell.getColumn()][cell.getRow()];
+                cell.setDomain(IntStream.range(1, 10).filter(i -> domain[i]).boxed().collect(Collectors.toList()));
+                cell.undeafen();
+                cell.addListener(DOMAIN_RESTRICTOR);
+            });
         } else {
             applyToCells(cell -> {
+                cell.removeListener(DOMAIN_RESTRICTOR);
                 cell.deafen();
                 cell.resetDomain();
                 cell.undeafen();
             });
-            Stream.of(cells).forEach(c -> c.removeListener(DOMAIN_RESTRICTOR));
         }
         this.restrictDomains = value;
     }
@@ -191,6 +195,31 @@ public class SudokuModel {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void fromMatrix(int[][] matrix) {
+        if (matrix == null) {
+            System.out.println("null matrix");
+            return;
+        }
+        reset();
+        applyToCells(cell -> {
+            int value = matrix[cell.getColumn()][cell.getRow()];
+            cell.deafen();
+            cell.setValue(value == 0 ? null : value);
+            cell.undeafen();
+        });
+    }
+
+    public int[][] toMatrix() {
+        int[][] matrix = new int[9][9];
+        for (int c = 0; c < 9; c++) {
+            for (int r = 0; r < 9; r++) {
+                Integer cellValue = get(c, r).getValue();
+                matrix[c][r] = cellValue == null ? 0 : cellValue;
+            }
+        }
+        return matrix;
     }
 
     public void load(File loadFile) {
