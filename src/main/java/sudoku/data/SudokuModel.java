@@ -77,7 +77,7 @@ public class SudokuModel {
             for (int r = 0; r < 9; r++) {
                 SudokuCell cell = new SudokuCell(c, r);
                 cell.addListener(UNDO_LISTENER);
-                cells[c * 9 + r] = cell;
+                cells[r * 9 + c] = cell;
             }
         }
     }
