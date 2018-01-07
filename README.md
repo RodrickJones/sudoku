@@ -12,7 +12,7 @@ An implementation of the classic puzzle game [Sudoku](https://en.wikipedia.org/w
 * Graphical hints for when a cell is incorrect
 * Puzzle solving
 * N*N boards
+* Generation of a sudoku puzzle
 
 #### Planned features
-* Generation of a sudoku puzzle
 * Multiple implementations of puzzle solvers

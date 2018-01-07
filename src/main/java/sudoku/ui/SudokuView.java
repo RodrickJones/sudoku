@@ -99,8 +99,7 @@ public class SudokuView extends VBox {
                     return;
                 }
             }
-            model.fromMatrix(SudokuGenerator.generate(side), true);
-            display(model);
+            display(model.fromMatrix(SudokuGenerator.generate(side), true));
         });
 
         MenuItem reset = new MenuItem("Reset");
@@ -172,8 +171,7 @@ public class SudokuView extends VBox {
         solve.setOnAction(e -> {
             DepthFirstSearchSolver s = new DepthFirstSearchSolver(model.toMatrix());
             s.findSingleSolution();
-            model.fromMatrix(s.getSolution(), false);
-            display(model);
+            display(model.fromMatrix(s.getSolution(), false));
         });
 
         help.getItems().addAll(undo, redo, new SeparatorMenuItem(), limitSelections, hint, check, solve);
