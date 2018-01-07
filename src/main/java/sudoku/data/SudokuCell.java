@@ -68,7 +68,9 @@ public class SudokuCell extends ComboBox<Integer> {
 
     public void reset() {
         deafen();
-        setValue(null);
+        if (!isLocked()) {
+            setValue(null);
+        }
         resetDomain();
         pseudoClassStateChanged(HINT, false);
         pseudoClassStateChanged(INCORRECT, false);

@@ -7,13 +7,11 @@ import java.util.stream.IntStream;
 
 public class DepthFirstSearchSolver extends Solver {
     private final int n;
-    private final int sqrtN;
     private boolean interrupt;
 
     public DepthFirstSearchSolver(int[][] board) {
         super(board);
         this.n = board.length;
-        this.sqrtN = (int) Math.sqrt(n);
     }
 
     @Override
@@ -41,33 +39,12 @@ public class DepthFirstSearchSolver extends Solver {
             solve(c + r / (n - 1), (r + 1) % n, findSingle);
         } else {
             IntStream.rangeClosed(1, n)
-                    .filter(i -> canSelect(c, r, i))
+                    .filter(i -> canSelect(board, c, r, i))
                     .forEach(i -> {
                         board[c][r] = i;
                         solve(c + r / (n - 1), (r + 1) % n, findSingle);
                         board[c][r] = 0;
                     });
         }
-    }
-
-    private boolean canSelect(int column, int row, int value) {
-        //check column and row
-        for (int i = 0; i < n; i++) {
-            if (board[column][i] == value
-                    || board[i][row] == value) {
-                return false;
-            }
-        }
-        //check sector
-        int colStart = column / sqrtN * sqrtN;
-        int rowStart = row / sqrtN * sqrtN;
-        for (int c = colStart; c < colStart + sqrtN; c++) {
-            for (int r = rowStart; r < rowStart + sqrtN; r++) {
-                if (board[c][r] == value) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 }

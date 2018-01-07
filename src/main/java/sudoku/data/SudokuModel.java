@@ -77,6 +77,8 @@ public class SudokuModel {
     }
 
     private void init() {
+        this.undoStack.clear();
+        this.redoStack.clear();
         int sqrtN = (int) Math.sqrt(n);
         if (sqrtN * sqrtN != n) {
             throw new IllegalArgumentException("n must be a square integer");
@@ -109,21 +111,22 @@ public class SudokuModel {
         return Stream.of(cells).max(comparator);
     }
 
-    private void applyToCells(Consumer<SudokuCell> function) {
-        Stream.of(cells).forEach(function);
+    private void applyToCells(Predicate<SudokuCell> filter, Consumer<SudokuCell> consumer) {
+        Arrays.stream(cells).filter(filter).forEach(consumer);
     }
 
-    public void reset(int n) {
-        this.n = n;
-        undoStack.clear();
-        redoStack.clear();
-        init();
+    private void applyToCells(Consumer<SudokuCell> consumer) {
+        Arrays.stream(cells).forEach(consumer);
     }
 
     public void reset() {
         undoStack.clear();
         redoStack.clear();
         applyToCells(SudokuCell::reset);
+    }
+
+    public void lock() {
+        applyToCells(c -> c.getValue() != null, c -> c.setLocked(true));
     }
 
     public BooleanBinding undoIsEmpty() {
@@ -228,13 +231,15 @@ public class SudokuModel {
         }
     }
 
-    public void load(File loadFile) {
+    public SudokuModel load(File loadFile) {
         try (BufferedReader reader = new BufferedReader(new FileReader(loadFile))) {
             //read n count
             String line = reader.readLine();
             int n = Integer.parseInt(line);
-            this.n = n;
-            this.init();
+            if (this.n != n) {
+                this.n = n;
+                init();
+            }
             String[] split;
             //read value table
             for (int r = 0; r < n; r++) {
@@ -260,20 +265,30 @@ public class SudokuModel {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return this;
     }
 
-    public void fromMatrix(int[][] matrix) {
+    public SudokuModel fromMatrix(int[][] matrix, boolean lock) {
         if (matrix == null) {
             System.out.println("null matrix");
-            return;
+        } else {
+            if (this.n != matrix.length) {
+                this.n = matrix.length;
+                init();
+            }
+            applyToCells(cell -> {
+                int value = matrix[cell.getColumn()][cell.getRow()];
+                cell.deafen();
+                cell.setValue(value == 0 ? null : value);
+                if (value == 0) {
+                    cell.setDisable(false);
+                } else {
+                    cell.setDisable(lock || cell.isDisable());
+                }
+                cell.undeafen();
+            });
         }
-        reset();
-        applyToCells(cell -> {
-            int value = matrix[cell.getColumn()][cell.getRow()];
-            cell.deafen();
-            cell.setValue(value == 0 ? null : value);
-            cell.undeafen();
-        });
+        return this;
     }
 
     public int[][] toMatrix() {

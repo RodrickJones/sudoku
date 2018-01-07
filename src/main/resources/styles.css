@@ -13,3 +13,8 @@
 .sudoku-cell:hint {
     -fx-background-color: orange;
 }
+
+.sudoku-cell:disabled, .sudoku-cell:disabled > *{
+    -fx-opacity: 1;
+    -fx-text-fill: grey;
+}

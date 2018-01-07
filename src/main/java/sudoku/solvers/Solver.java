@@ -69,17 +69,35 @@ public abstract class Solver {
         return domains;
     }
 
+    public static boolean canSelect(int[][] board, int column, int row, int value) {
+        final int n = board.length;
+        //check column and row
+        for (int i = 0; i < n; i++) {
+            if (board[column][i] == value
+                    || board[i][row] == value) {
+                return false;
+            }
+        }
+        final int sqrtN = (int) Math.sqrt(n);
+        //check sector
+        int colStart = column / sqrtN * sqrtN;
+        int rowStart = row / sqrtN * sqrtN;
+        for (int c = colStart; c < colStart + sqrtN; c++) {
+            for (int r = rowStart; r < rowStart + sqrtN; r++) {
+                if (board[c][r] == value) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     /**
      * Solve the given board, storing all found solutions in the solutions collection
      */
     public abstract void findAllSolutions();
 
     public abstract void findSingleSolution();
-
-    public void reset(int[][] board) {
-        MatrixUtil.copyOf(board, this.board);
-        solutions.clear();
-    }
 
     public int[][] getSolution() {
         return getSolution(0);

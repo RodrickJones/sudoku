@@ -11,6 +11,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import sudoku.data.SudokuCell;
 import sudoku.data.SudokuModel;
+import sudoku.generators.SudokuGenerator;
 import sudoku.solvers.dfs.DepthFirstSearchSolver;
 
 import java.io.File;
@@ -41,10 +42,10 @@ public class SudokuView extends VBox {
         setFillWidth(true);
         setVgrow(boardPane, Priority.ALWAYS);
         getChildren().add(boardPane);
-        createDisplayFor(model);
+        display(model.fromMatrix(SudokuGenerator.generate(n), true));
     }
 
-    private void createDisplayFor(SudokuModel model) {
+    private void display(SudokuModel model) {
         GridPane parentPane = new GridPane();
         parentPane.setPadding(new Insets(5, 5, 5, 5));
         parentPane.setHgap(5);
@@ -94,10 +95,12 @@ public class SudokuView extends VBox {
                     } catch (NumberFormatException e) {
                         side = -1;
                     }
+                } else {
+                    return;
                 }
             }
-            model.reset(side);
-            createDisplayFor(model);
+            model.fromMatrix(SudokuGenerator.generate(side), true);
+            display(model);
         });
 
         MenuItem reset = new MenuItem("Reset");
@@ -120,8 +123,7 @@ public class SudokuView extends VBox {
             FileChooser chooser = getChooser();
             File loadFile = chooser.showOpenDialog(stage);
             if (loadFile != null) {
-                model.load(loadFile);
-                createDisplayFor(model);
+                display(model.load(loadFile));
             }
         });
 
@@ -160,10 +162,8 @@ public class SudokuView extends VBox {
             Dialog dialog;
             if (model.isComplete()) {
                 dialog = new Alert(Alert.AlertType.CONFIRMATION, "Game is complete and valid!");
-                System.out.println("Model is complete");
             } else {
                 dialog = new Alert(Alert.AlertType.ERROR, "Game is incomplete or invalid!");
-                System.out.println("Model is not complete");
             }
             dialog.show();
         });
@@ -171,10 +171,9 @@ public class SudokuView extends VBox {
         MenuItem solve = new MenuItem("Solve");
         solve.setOnAction(e -> {
             DepthFirstSearchSolver s = new DepthFirstSearchSolver(model.toMatrix());
-            long start = System.currentTimeMillis();
             s.findSingleSolution();
-            System.out.println(System.currentTimeMillis() - start + "ms to solve");
-            model.fromMatrix(s.getSolution());
+            model.fromMatrix(s.getSolution(), false);
+            display(model);
         });
 
         help.getItems().addAll(undo, redo, new SeparatorMenuItem(), limitSelections, hint, check, solve);
