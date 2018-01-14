@@ -24,11 +24,16 @@ public class SudokuView extends VBox {
     private final SudokuModel model;
     private final Stage stage;
     private final ScrollPane boardPane;
-    private FileChooser chooser;
+    private final FileChooser chooser;
 
     public SudokuView(Stage stage, int n) {
         this.model = new SudokuModel(n);
         this.stage = stage;
+        this.chooser = new FileChooser();
+        this.chooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Sudoku files", "*.sudoku", "*.sdk"),
+                new FileChooser.ExtensionFilter("All files", "*.*")
+        );
         setAlignment(Pos.TOP_CENTER);
         setSpacing(5);
 
@@ -92,6 +97,10 @@ public class SudokuView extends VBox {
                 if (res.isPresent()) {
                     try {
                         side = Integer.parseInt(res.get());
+                        int sqrt = (int) Math.sqrt(side);
+                        if (sqrt * sqrt != side) {
+                            side = -1;
+                        }
                     } catch (NumberFormatException e) {
                         side = -1;
                     }
@@ -106,7 +115,7 @@ public class SudokuView extends VBox {
         reset.setOnAction(e -> model.reset());
 
         MenuItem exit = new MenuItem("Exit");
-        exit.setOnAction(e -> System.exit(0));
+        exit.setOnAction(e -> stage.close());
 
         MenuItem save = new MenuItem("Save");
         save.setOnAction(e -> {
@@ -126,7 +135,7 @@ public class SudokuView extends VBox {
             }
         });
 
-        fileMenu.getItems().addAll(newGame, reset, save, load, new SeparatorMenuItem(), exit);
+        fileMenu.getItems().addAll(newGame, reset, new SeparatorMenuItem(), save, load, new SeparatorMenuItem(), exit);
         return fileMenu;
     }
 
@@ -145,6 +154,7 @@ public class SudokuView extends VBox {
         limitSelections.selectedProperty().addListener((observable, oldValue, newValue) -> model.restrictDomains(newValue));
 
         MenuItem hint = new MenuItem("Hint");
+        hint.disableProperty().bind(limitSelections.selectedProperty().not());
         hint.setOnAction(e -> model.getMin(cell -> cell.getValue() == null || cell.getDomain().size() > 2,
                 Comparator.comparingInt(cell -> cell.getDomain().size()))
                 .ifPresent(c -> {
@@ -171,21 +181,22 @@ public class SudokuView extends VBox {
         solve.setOnAction(e -> {
             DepthFirstSearchSolver s = new DepthFirstSearchSolver(model.toMatrix());
             s.findSingleSolution();
-            display(model.fromMatrix(s.getSolution(), false));
+            if (!s.isSolvable()) {
+                Alert unsolvable = new Alert(Alert.AlertType.ERROR, "The puzzle is unsolvable from this state");
+                unsolvable.setHeaderText("Unsolvable");
+                unsolvable.show();
+            } else {
+                display(model.fromMatrix(s.getSolution(), false));
+            }
         });
 
-        help.getItems().addAll(undo, redo, new SeparatorMenuItem(), limitSelections, hint, check, solve);
+        help.getItems().addAll(undo, redo, new SeparatorMenuItem(),
+                limitSelections, hint, new SeparatorMenuItem(),
+                check, solve);
         return help;
     }
 
     private synchronized FileChooser getChooser() {
-        if (chooser == null) {
-            chooser = new FileChooser();
-            chooser.getExtensionFilters().addAll(
-                    new FileChooser.ExtensionFilter("Sudoku files", "*.sudoku", "*.sdk"),
-                    new FileChooser.ExtensionFilter("All files", "*.*")
-            );
-        }
         return chooser;
     }
 }

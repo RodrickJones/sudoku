@@ -8,10 +8,12 @@ import java.util.Arrays;
 
 public abstract class Solver {
     protected final int[][] board;
+    protected final int n;
     protected final ArrayList<int[][]> solutions = new ArrayList<>();
 
     public Solver(int[][] board) {
         this.board = MatrixUtil.copyOf(board);
+        this.n = board.length;
     }
 
     public static boolean[][][] calculateDomains(final int[][] board, boolean[][][] domains, final int n) {
@@ -108,10 +110,7 @@ public abstract class Solver {
     }
 
     public int[][] getSolution(int index) {
-        if (index > solutions.size()) {
-            return null;
-        }
-        return solutions.get(index);
+        return solutions.size() > index ? solutions.get(index) : null;
     }
 
     public int solutionCount() {

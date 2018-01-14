@@ -5,6 +5,7 @@ import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.collections.ObservableList;
 import sudoku.solvers.Solver;
+import sudoku.util.Logger;
 
 import java.io.*;
 import java.util.*;
@@ -270,7 +271,7 @@ public class SudokuModel {
 
     public SudokuModel fromMatrix(int[][] matrix, boolean lock) {
         if (matrix == null) {
-            System.out.println("null matrix");
+            Logger.debug("Null matrix");
         } else {
             if (this.n != matrix.length) {
                 this.n = matrix.length;

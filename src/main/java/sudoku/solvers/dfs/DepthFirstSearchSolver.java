@@ -6,12 +6,10 @@ import sudoku.util.MatrixUtil;
 import java.util.stream.IntStream;
 
 public class DepthFirstSearchSolver extends Solver {
-    private final int n;
     private boolean interrupt;
 
     public DepthFirstSearchSolver(int[][] board) {
         super(board);
-        this.n = board.length;
     }
 
     @Override

@@ -4,6 +4,7 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import sudoku.ui.SudokuView;
+import sudoku.util.Logger;
 
 public class Main extends Application {
     private static int n = 9;
@@ -14,6 +15,7 @@ public class Main extends Application {
                 n = Integer.parseInt(arg.replace("n=", ""));
             }
         }
+        Logger.setLevel(Logger.Level.DEBUG);
         Application.launch(args);
     }
 
