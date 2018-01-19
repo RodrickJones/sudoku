@@ -3,7 +3,6 @@ package sudoku.generators;
 import javafx.scene.control.Alert;
 import sudoku.solvers.Solver;
 import sudoku.solvers.dfs.DepthFirstSearchSolver;
-import sudoku.solvers.dlx.SudokuDlx;
 import sudoku.util.Logger;
 
 import java.util.Collections;
@@ -47,9 +46,9 @@ public class SudokuGenerator {
         Logger.debug("Board is solvable!");
         Logger.debug("Generation took " + (System.currentTimeMillis() - genStart) + "ms");
         long start = System.currentTimeMillis();
-        Solver s = new SudokuDlx(result);
-        s.findSingleSolution();
-        Logger.debug("Dlx " + (System.currentTimeMillis() - start));
+        //Solver s = new SudokuDlx(result);
+        //s.findSingleSolution();
+        //Logger.debug("Dlx " + (System.currentTimeMillis() - start));
         genAlert.close();
         return result;
     }
