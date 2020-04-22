@@ -1,6 +1,6 @@
 # sudoku
 
-An implementation of the classic puzzle game [Sudoku](https://en.wikipedia.org/wiki/Sudoku) in Java, using Java SE 8 and JavaFX.
+An implementation of the classic puzzle [Sudoku](https://en.wikipedia.org/wiki/Sudoku) in Java, using Java SE 8 and JavaFX.
 
 #### Implemented features
 * Standard 9x9 game board
